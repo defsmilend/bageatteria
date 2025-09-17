@@ -134,7 +134,7 @@ function BottomSheet({ open, onClose, children }) {
     const [touchStart, setTouchStart] = useState(0);
     const [touchCurrent, setTouchCurrent] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
-    
+
     useEffect(() => {
         if (open) {
             setVisible(true);
@@ -144,48 +144,54 @@ function BottomSheet({ open, onClose, children }) {
             // Разблокируем скролл body
             document.body.style.overflow = '';
         }
-        
+
         return () => {
             document.body.style.overflow = '';
         };
     }, [open]);
-    
+
     const handleClose = () => {
         setVisible(false);
         setTimeout(onClose, 280);
     };
 
-    // Touch обработчики для свайпа
-    const handleTouchStart = (e) => {
+    // Touch обработчики только для header области
+    const handleHeaderTouchStart = (e) => {
         const touch = e.touches[0];
         setTouchStart(touch.clientY);
         setTouchCurrent(touch.clientY);
         setIsDragging(true);
     };
 
-    const handleTouchMove = (e) => {
+    const handleHeaderTouchMove = (e) => {
         if (!isDragging) return;
         const touch = e.touches[0];
         setTouchCurrent(touch.clientY);
+
+        // Превентим прокрутку только при свайпе вниз
+        const deltaY = touch.clientY - touchStart;
+        if (deltaY > 0) {
+            e.preventDefault();
+        }
     };
 
-    const handleTouchEnd = () => {
+    const handleHeaderTouchEnd = () => {
         if (!isDragging) return;
-        
+
         const deltaY = touchCurrent - touchStart;
         const threshold = 80; // Минимальное расстояние для закрытия
-        
+
         if (deltaY > threshold) {
             handleClose();
         }
-        
+
         setIsDragging(false);
         setTouchStart(0);
         setTouchCurrent(0);
     };
-    
+
     if (!open) return null;
-    
+
     return (
         <div className="fixed inset-0 z-50" onClick={handleClose}>
             {/* Backdrop */}
@@ -194,29 +200,34 @@ function BottomSheet({ open, onClose, children }) {
                     visible ? "opacity-100" : "opacity-0"
                 }`}
             />
-            
-            {/* Bottom Sheet */}
+
+            {/* Bottom Sheet - оставляем 15% сверху для видимости шторки */}
             <div
-                className={`absolute inset-x-0 bottom-0 h-[95vh] bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out overflow-hidden flex flex-col ${
+                className={`absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out overflow-hidden flex flex-col ${
                     visible ? "translate-y-0" : "translate-y-full"
                 }`}
                 style={{
-                    transform: isDragging && visible 
-                        ? `translateY(${Math.max(0, touchCurrent - touchStart)}px)` 
+                    height: '85vh', // Уменьшаем с 95vh до 85vh
+                    maxHeight: '85vh',
+                    transform: isDragging && visible
+                        ? `translateY(${Math.max(0, touchCurrent - touchStart)}px)`
                         : undefined
                 }}
                 onClick={(e) => e.stopPropagation()}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
             >
-                {/* Handle bar - улучшенный для свайпа */}
-                <div className="flex justify-center pt-3 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing">
-                    <div className="w-12 h-1.5 bg-[#463223]/30 rounded-full transition-colors duration-200 hover:bg-[#463223]/40"></div>
+                {/* Header area для свайпа - увеличиваем область */}
+                <div
+                    className="flex justify-center pt-4 pb-3 flex-shrink-0 cursor-grab active:cursor-grabbing bg-white rounded-t-2xl"
+                    onTouchStart={handleHeaderTouchStart}
+                    onTouchMove={handleHeaderTouchMove}
+                    onTouchEnd={handleHeaderTouchEnd}
+                    style={{ touchAction: 'none' }} // Отключаем стандартные жесты браузера
+                >
+                    <div className="w-16 h-1.5 bg-[#463223]/40 rounded-full transition-colors duration-200 hover:bg-[#463223]/60"></div>
                 </div>
-                
-                {/* Scrollable content */}
-                <div className="flex-1 overflow-y-auto">
+
+                {/* Scrollable content - свайп здесь не закрывает шторку */}
+                <div className="flex-1 overflow-y-auto" style={{ touchAction: 'pan-y' }}>
                     {children}
                 </div>
             </div>
