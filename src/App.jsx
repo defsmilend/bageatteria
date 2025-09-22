@@ -310,7 +310,7 @@ export default function App() {
         let stop = false;
         async function load() {
             try {
-                const { data, error } = await sb.from("menu").select("*").eq("available", true);
+                const { data, error } = await sb.from("menu").select("*").eq("available", true).order("id", { ascending: true });
                 if (error) throw error;
                 const norm = (data || []).map((r) => {
                     const optList = parseOptions(r.options);
@@ -373,22 +373,26 @@ export default function App() {
     );
 
     const categories = useMemo(() => {
-        const cats = Array.from(new Set(filtered.map((i) => i.category)));
-        const desired = [
-            "Горячие напитки",
-            "Холодные напитки",
-            "Каши",
-            "Яйца",
-            "Круассаны",
-            "Сэндвичи",
-            "Пицца",
-            "Паста",
-            "Салаты и закуски",
-        ];
-        const ordered = desired.filter((d) => cats.includes(d)).concat(cats.filter((c) => !desired.includes(c)));
-        if (!activeCat && ordered.length) setActiveCat(ordered[0]);
-        return ordered;
-    }, [filtered]);
+        // Получаем порядок категорий из исходного массива items (порядок из базы данных)
+        const seenCategories = new Set();
+        const allOrdered = [];
+
+        // Сначала проходим по всем items чтобы получить правильный порядок из БД
+        for (const item of items) {
+            if (!seenCategories.has(item.category)) {
+                seenCategories.add(item.category);
+                allOrdered.push(item.category);
+            }
+        }
+
+        // Затем фильтруем только те категории, которые есть в текущей локации
+        const filteredCategories = allOrdered.filter(cat =>
+            filtered.some(item => item.category === cat)
+        );
+
+        if (!activeCat && filteredCategories.length) setActiveCat(filteredCategories[0]);
+        return filteredCategories;
+    }, [items, filtered]);
 
     const byCategory = useMemo(() => {
         const map = {};
@@ -636,7 +640,14 @@ export default function App() {
                         ← Назад
                     </button>
                     <div className="font-semibold text-[#463223]" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}>Избранное</div>
-                    <div className="ml-auto text-xs text-[#463223]/60" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 300}}>{favorites.length} поз.</div>
+                    <div className="ml-auto flex items-center gap-2">
+                        <div className="text-xs text-[#463223]/60" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 400}}>
+                            {favorites.length} поз.
+                        </div>
+                        <div className="rounded-lg bg-[#463223] px-2.5 py-1.5 text-sm font-bold text-white shadow-sm" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}>
+                            {money(favorites.reduce((sum, f) => sum + (f.totalPrice ?? f.price), 0))}
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -664,35 +675,59 @@ export default function App() {
                                 </h2>
                                 <div className="grid grid-cols-2 gap-2">
                                     {(byCategory[cat] || []).map((item) => (
-                                        <button
-                                            key={item.ID}
-                                            onClick={() => {
-                                                setModalItem(item);
-                                                setSelectedOpts({});
-                                            }}
-                                            className="group overflow-hidden rounded-xl border border-[#463223]/10 bg-white text-left shadow-lg hover:shadow-xl transition-all duration-200 w-full"
-                                        >
-                                            <div className="relative">
-                                                <img
-                                                    src={item.photo}
-                                                    alt={item.name}
-                                                    loading="lazy"
-                                                    decoding="async"
-                                                    className="h-52 w-full object-cover transition-transform duration-200 group-active:scale-[0.98]"
-                                                    onError={(e) => {
-                                                        console.log('❌ Image failed to load:', e.target.src);
-                                                        // Показываем placeholder
-                                                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRTNFM0UwIi8+CjxwYXRoIGQ9Ik0xMzAgNzBIMTcwVjEzMEgxMzBWNzBaIiBmaWxsPSIjNDYzMjIzIiBmaWxsLW9wYWNpdHk9IjAuMyIvPgo8cGF0aCBkPSJNMTQ1IDg1TDE1NSA5NUwxNjUgODUiIHN0cm9rZT0iIzQ2MzIyMyIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPGNpcmNsZSBjeD0iMTQwIiBjeT0iODUiIHI9IjUiIGZpbGw9IiM0NjMyMjMiLz4KPC9zdmc+';
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="p-4">
-                                                <div className="flex-column items-baseline justify-between gap-2">
-                                                    <div className="truncate text-sm font-semibold text-[#463223]" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}>{item.name}</div>
-                                                    <div className="text-sm font-medium text-[#463223]">{money(item.price)}</div>
+                                        <div key={item.ID} className="relative group overflow-hidden rounded-xl border border-[#463223]/10 bg-white shadow-lg hover:shadow-xl transition-all duration-200">
+                                            <button
+                                                onClick={() => {
+                                                    setModalItem(item);
+                                                    setSelectedOpts({});
+                                                }}
+                                                className="w-full text-left"
+                                            >
+                                                <div className="relative">
+                                                    <img
+                                                        src={item.photo}
+                                                        alt={item.name}
+                                                        loading="lazy"
+                                                        decoding="async"
+                                                        className="h-52 w-full object-cover transition-transform duration-200 group-active:scale-[0.98]"
+                                                        onError={(e) => {
+                                                            console.log('❌ Image failed to load:', e.target.src);
+                                                            // Показываем placeholder
+                                                            e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRTNFM0UwIi8+CjxwYXRoIGQ9Ik0xMzAgNzBIMTcwVjEzMEgxMzBWNzBaIiBmaWxsPSIjNDYzMjIzIiBmaWxsLW9wYWNpdHk9IjAuMyIvPgo8cGF0aCBkPSJNMTQ1IDg1TDE1NSA5NUwxNjUgODUiIHN0cm9rZT0iIzQ2MzIyMyIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPGNpcmNsZSBjeD0iMTQwIiBjeT0iODUiIHI9IjUiIGZpbGw9IiM0NjMyMjMiLz4KPC9zdmc+';
+                                                        }}
+                                                    />
                                                 </div>
-                                            </div>
-                                        </button>
+                                                <div className="p-4">
+                                                    <div className="flex-column items-baseline justify-between gap-2">
+                                                        <div className="truncate text-sm font-semibold text-[#463223]" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}>{item.name}</div>
+                                                        <div className="text-sm font-medium text-[#463223]">{money(item.price)}</div>
+                                                    </div>
+                                                </div>
+                                            </button>
+
+                                            {/* Кнопка добавления в избранное */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation(); // Предотвращаем открытие модального окна
+                                                    toggleFavorite(item, {});
+                                                }}
+                                                className={`absolute bottom-3 right-3 z-10 rounded-full p-2 shadow-md transition-all duration-200 hover:scale-110 active:scale-95 ${
+                                                    isFav(item, {})
+                                                        ? "bg-[#463223] text-white shadow-lg"
+                                                        : "bg-white/90 text-[#463223] hover:bg-white"
+                                                }`}
+                                                aria-label={isFav(item, {}) ? "Убрать из избранного" : "Добавить в избранное"}
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                    <path
+                                                        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.41 4.41 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.59 3 22 5.41 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                                                        fill={isFav(item, {}) ? "currentColor" : "none"}
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     ))}
                                 </div>
                             </section>
@@ -854,7 +889,7 @@ export default function App() {
 
 function FavoritesTextList({ favorites, setFavorites }) {
     const [expandedItem, setExpandedItem] = useState(null);
-    
+
     if (!favorites.length) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
