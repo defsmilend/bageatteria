@@ -545,21 +545,18 @@ export default function App() {
             {/* TOP BAR: logo + pretty select */}
             <div className="sticky top-0 z-50 flex h-12 items-center gap-3 border-b border-neutral-200 bg-white px-5">
                 <div className="flex items-center">
-                    <img 
-                        src={logoImage} 
-                        alt="Bageatteria" 
-                        className="h-8 w-auto object-contain object-center"
+                    <img
+                        src={logoImage}
+                        alt="Bageatteria"
+                        className="h-10 w-auto object-contain object-center"
                         style={{
                             filter: 'brightness(1.1) contrast(1.2)',
-                            maxWidth: '120px'
+                            maxWidth: '140px'
                         }}
                     />
                 </div>
 
                 <div className="ml-auto flex items-center gap-2">
-                    <span className="text-xs text-[#463223]/70" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 500}}>
-                        Локация:
-                    </span>
                     {/* Pretty select */}
                     <div className="relative">
                         <select
