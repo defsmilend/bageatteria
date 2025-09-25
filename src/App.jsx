@@ -492,12 +492,21 @@ export default function App() {
     }, [categories]);
 
     // Favorites helpers
-    const toggleFavorite = (item, opts) => {
+    const addToFavorites = (item, opts) => {
         const key = `${item.ID}-${JSON.stringify(opts || {})}`;
         const totalPrice = calcTotal(item, opts || {}, item.optionsList);
         setFavorites((prev) => {
-            const exists = prev.find((p) => p.key === key);
-            if (exists) return prev.filter((p) => p.key !== key);
+            const existingIndex = prev.findIndex((p) => p.key === key);
+            if (existingIndex !== -1) {
+                // Увеличиваем количество существующего элемента
+                const updated = [...prev];
+                updated[existingIndex] = {
+                    ...updated[existingIndex],
+                    quantity: (updated[existingIndex].quantity || 1) + 1
+                };
+                return updated;
+            }
+            // Добавляем новый элемент с количеством 1
             return [
                 {
                     key,
@@ -510,11 +519,26 @@ export default function App() {
                     photo: item.photo,
                     options: opts || {},
                     optionsList: item.optionsList,
+                    quantity: 1,
                 },
                 ...prev,
             ];
         });
     };
+
+    const toggleFavorite = (item, opts) => {
+        const key = `${item.ID}-${JSON.stringify(opts || {})}`;
+        const exists = favorites.find((f) => f.key === key);
+
+        if (exists) {
+            // Если позиция есть в избранном - удаляем полностью
+            setFavorites((prev) => prev.filter((f) => f.key !== key));
+        } else {
+            // Если позиции нет - добавляем с количеством 1
+            addToFavorites(item, opts);
+        }
+    };
+
     const isFav = (item, opts) =>
         favorites.some((f) => f.key === `${item.ID}-${JSON.stringify(opts || {})}`);
 
@@ -639,10 +663,10 @@ export default function App() {
                     <div className="font-semibold text-[#463223]" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}>Избранное</div>
                     <div className="ml-auto flex items-center gap-2">
                         <div className="text-xs text-[#463223]/60" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 400}}>
-                            {favorites.length} поз.
+                            {favorites.reduce((sum, f) => sum + (f.quantity || 1), 0)} шт.
                         </div>
                         <div className="rounded-lg bg-[#463223] px-2.5 py-1.5 text-sm font-bold text-white shadow-sm" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}>
-                            {money(favorites.reduce((sum, f) => sum + (f.totalPrice ?? f.price), 0))}
+                            {money(favorites.reduce((sum, f) => sum + ((f.totalPrice ?? f.price) * (f.quantity || 1)), 0))}
                         </div>
                     </div>
                 </div>
@@ -650,10 +674,13 @@ export default function App() {
 
             {/* CONTENT */}
             <div className="flex-1 flex flex-col">
-                <div className="mx-auto max-w-screen-md px-3 pb-6 flex-1">
-                    {view === "favorites" ? (
+                {view === "favorites" ? (
+                    <div className="px-3 pb-6 flex-1">
                         <FavoritesTextList favorites={favorites} setFavorites={setFavorites} />
-                    ) : (
+                    </div>
+                ) : (
+                    <div className="mx-auto max-w-screen-md px-3 pb-6 flex-1">
+                        {
                         categories.map((cat) => (
                             <section
                                 key={cat}
@@ -729,16 +756,17 @@ export default function App() {
                                 </div>
                             </section>
                         ))
-                    )}
-                </div>
-
-                {/* FOOTER - всегда внизу */}
-                <footer className="mt-auto py-6 text-center text-xs text-[#463223]/60 bg-white border-t border-[#463223]/10">
-                    <span style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 300}}>
-                        © {new Date().getFullYear()} Bageatteria · Меню по QR · Данные: Supabase
-                    </span>
-                </footer>
+                        }
+                    </div>
+                )}
             </div>
+
+            {/* FOOTER - всегда внизу */}
+            <footer className="mt-auto py-6 text-center text-xs text-[#463223]/60 bg-white border-t border-[#463223]/10">
+                <span style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 300}}>
+                    © {new Date().getFullYear()} Bageatteria · Меню по QR · Данные: Supabase
+                </span>
+            </footer>
 
             {/* BOTTOM SHEET */}
             <BottomSheet open={!!modalItem} onClose={() => setModalItem(null)}>
@@ -850,12 +878,12 @@ export default function App() {
                             <button
                                 className="w-full rounded-3xl bg-[#463223] px-6 py-4 text-lg font-bold text-white shadow-lg transition-all duration-200 hover:bg-[#463223]/90 hover:shadow-xl active:scale-95"
                                 onClick={() => {
-                                    toggleFavorite(modalItem, selectedOpts);
+                                    addToFavorites(modalItem, selectedOpts);
                                     setModalItem(null); // Закрываем Bottom Sheet после добавления
                                 }}
                                 style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}
                             >
-                                {isFav(modalItem, selectedOpts) ? "Убрать из избранного" : "Добавить в избранное"}
+                                Добавить в избранное
                             </button>
                         </div>
                     </div>
@@ -875,7 +903,7 @@ export default function App() {
                 {/* badge */}
                 {favorites.length > 0 && (
                     <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-[#463223] shadow-md">
-                        {favorites.length}
+                        {favorites.reduce((sum, f) => sum + (f.quantity || 1), 0)}
                     </span>
                 )}
             </button>
@@ -934,12 +962,17 @@ function FavoritesTextList({ favorites, setFavorites }) {
                             {/* Основная информация */}
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-2 mb-2">
-                                    <h4 className="font-semibold text-[#463223] text-sm leading-tight" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}>
-                                        {f.name}
-                                    </h4>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="font-semibold text-[#463223] text-sm leading-tight mb-1" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}>
+                                            {f.name}
+                                        </h4>
+                                        <div className="text-xs text-[#463223]/60" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 400}}>
+                                            {f.quantity || 1} шт.
+                                        </div>
+                                    </div>
                                     <div className="text-right flex-shrink-0">
                                         <div className="text-sm font-semibold text-[#463223]">
-                                            {money(f.totalPrice ?? f.price)}
+                                            {money((f.totalPrice ?? f.price) * (f.quantity || 1))}
                                         </div>
                                     </div>
                                 </div>
@@ -978,8 +1011,46 @@ function FavoritesTextList({ favorites, setFavorites }) {
                                     </div>
                                 )}
                                 
-                                {/* Кнопка удаления - более яркая */}
-                                <div>
+                                {/* Кнопки управления количеством */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        {/* Кнопка уменьшения количества */}
+                                        <button
+                                            className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#463223]/10 text-[#463223] transition-all duration-200 hover:bg-[#463223]/20 active:scale-95"
+                                            onClick={() => setFavorites((prev) => prev.map(item => {
+                                                if (item.key === f.key) {
+                                                    const newQuantity = (item.quantity || 1) - 1;
+                                                    return newQuantity <= 0 ? null : { ...item, quantity: newQuantity };
+                                                }
+                                                return item;
+                                            }).filter(Boolean))}
+                                            style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 600}}
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                                <path d="M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                                            </svg>
+                                        </button>
+
+                                        {/* Количество */}
+                                        <span className="text-sm font-semibold text-[#463223] min-w-[2rem] text-center" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 600}}>
+                                            {f.quantity || 1}
+                                        </span>
+
+                                        {/* Кнопка увеличения количества */}
+                                        <button
+                                            className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#463223]/10 text-[#463223] transition-all duration-200 hover:bg-[#463223]/20 active:scale-95"
+                                            onClick={() => setFavorites((prev) => prev.map(item =>
+                                                item.key === f.key ? { ...item, quantity: (item.quantity || 1) + 1 } : item
+                                            ))}
+                                            style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 600}}
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                                <path d="M12 5v14m-7-7h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    {/* Кнопка полного удаления */}
                                     <button
                                         className="inline-flex items-center gap-1.5 rounded-lg bg-[#463223] text-white px-3 py-1.5 text-xs transition-all duration-200 hover:bg-[#463223]/90 hover:shadow-md active:scale-95"
                                         onClick={() => setFavorites((prev) => prev.filter((x) => x.key !== f.key))}
