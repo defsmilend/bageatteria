@@ -329,6 +329,7 @@ export default function App() {
                         available: !!r.available,
                         locationRaw: r.location || "",
                         locations: locs,
+                        pfc: r.pfc || "",
                         updated_at: r.updated_at,
                     };
                 });
@@ -652,22 +653,27 @@ export default function App() {
 
             {/* FAVORITES SUBHEADER with Back */}
             {view === "favorites" && (
-                <div className="sticky top-12 z-40 flex items-center gap-2 border-b border-neutral-200 bg-white px-3 py-2">
-                    <button
-                        onClick={() => setView("menu")}
-                        className="rounded-lg border-2 border-[#463223]/20 bg-white px-3 py-1 text-sm text-[#463223] transition-all duration-200 hover:border-[#463223]/40 hover:bg-[#463223]/5"
-                        style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 600}}
-                    >
-                        ← Назад
-                    </button>
-                    <div className="font-semibold text-[#463223]" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}>Избранное</div>
-                    <div className="ml-auto flex items-center gap-2">
-                        <div className="text-xs text-[#463223]/60" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 400}}>
-                            {favorites.reduce((sum, f) => sum + (f.quantity || 1), 0)} шт.
+                <div className="sticky top-12 z-40 border-b border-neutral-200 bg-white">
+                    <div className="flex items-center gap-2 px-3 py-2">
+                        <button
+                            onClick={() => setView("menu")}
+                            className="rounded-lg border-2 border-[#463223]/20 bg-white px-3 py-1 text-sm text-[#463223] transition-all duration-200 hover:border-[#463223]/40 hover:bg-[#463223]/5"
+                            style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 600}}
+                        >
+                            ← Назад
+                        </button>
+                        <div className="font-semibold text-[#463223]" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}>Избранное</div>
+                        <div className="ml-auto flex items-center gap-2">
+                            <div className="text-xs text-[#463223]/60" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 400}}>
+                                {favorites.reduce((sum, f) => sum + (f.quantity || 1), 0)} шт.
+                            </div>
+                            <div className="rounded-lg bg-[#463223] px-2.5 py-1.5 text-sm font-bold text-white shadow-sm" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}>
+                                {money(favorites.reduce((sum, f) => sum + ((f.totalPrice ?? f.price) * (f.quantity || 1)), 0))}
+                            </div>
                         </div>
-                        <div className="rounded-lg bg-[#463223] px-2.5 py-1.5 text-sm font-bold text-white shadow-sm" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}>
-                            {money(favorites.reduce((sum, f) => sum + ((f.totalPrice ?? f.price) * (f.quantity || 1)), 0))}
-                        </div>
+                    </div>
+                    <div className="px-3 py-2 text-xs text-center text-[#463223]/70 border-t border-[#463223]/10" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 500}}>
+                        Чтобы сделать заказ обратитесь на кассу или к официанту
                     </div>
                 </div>
             )}
@@ -820,7 +826,16 @@ export default function App() {
                                     </p>
                                 </div>
                             )}
-                            
+
+                            {modalItem.pfc && (
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-semibold text-[#463223]" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 600}}>КБЖУ</h4>
+                                    <p className="text-sm text-neutral-600" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 400}}>
+                                        {modalItem.pfc}
+                                    </p>
+                                </div>
+                            )}
+
                             {modalItem.ingredients && (
                                 <div className="space-y-2">
                                     <h4 className="text-sm font-semibold text-[#463223]" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 600}}>Состав</h4>
@@ -919,8 +934,8 @@ function FavoritesTextList({ favorites, setFavorites }) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
                 <div className="mb-4 rounded-full bg-[#463223]/10 p-6">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="#463223" opacity="0.6">
-                        <path d="M12 21s-6.716-4.35-9.333-7.2C.5 11.4 1.1 7.6 4.5 6.6c2.3-.7 3.9.5 4.9 1.7 1-1.2 2.6-2.4 4.9-1.7 3.4 1 4 4.8 1.8 7.2C18.716 16.65 12 21 12 21z" />
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.41 4.41 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.59 3 22 5.41 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="none" stroke="#463223" strokeWidth="2" opacity="0.6"/>
                     </svg>
                 </div>
                 <h3 className="mb-2 text-lg font-semibold text-[#463223]" style={{fontFamily: 'Montserrat, sans-serif', fontWeight: 700}}>
